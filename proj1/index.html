@@ -1,7 +1,250 @@
-<html>
-	<head>
-	</head>
-	<body>
-		Project 1 here
-	</body>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<style>
+  body {
+    padding: 100px;
+    width: 1000px;
+    margin: auto;
+    text-align: left;
+    font-weight: 300;
+    font-family: 'Open Sans', sans-serif;
+    color: #121212;
+  }
+  h1, h2, h3, h4 {
+    font-family: 'Source Sans Pro', sans-serif;
+  }
+</style>
+<title>CS 184 Rasterizer</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
+</head>
+
+
+<body>
+
+<h1 align="middle">CS 184: Computer Graphics and Imaging, Spring 2023</h1>
+<h1 align="middle">Project 1: Rasterizer</h1>
+<h2 align="middle">Dominic de Bettencourt, CS184-ACE</h2>
+
+<br><br>
+
+<div>
+
+<h2 align="middle">Overview</h2>
+<p>Give a high-level overview of what you implemented in this project. Think about what you've built as a whole. Share your thoughts on what interesting things you've learned from completing the project.</p>
+
+<h2 align="middle">Section I: Rasterization</h2>
+
+<h3 align="middle">Part 1: Rasterizing single-color triangles</h3>
+
+<p>I rasterize triangles in the following way: <br></br>
+<ul>
+<li>First, I compute the bounding box of the triangle by finding the minimum and maximum x and y values of the triangle.</li>
+<li>Then, I check each pixel within the bounding box, and see if the center of the pixel is inside all three edges of the triangle, using the formula from Lecture 2. </li>
+<li>If I get a result that the pixel is within all three edges (or outside all three edges, to account for differing orders of the vertices), then I fill in the pixel.</li>
+</ul>
+My algorithm is no worse than one that checks all samples within the bounding box of the triangle, because it does exactly that - check all samples within the bounding box of the triangle. 
+</p>
+
+<div align="middle">
+  <img src="images/task_1.png" align="middle" width="800px"/>
+</div>
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="images/image1.png" align="middle" width="400px"/>
+        <figcaption align="middle">Caption goes here.</figcaption>
+      </td>
+      <td>
+        <img src="images/image2.png" align="middle" width="400px"/>
+        <figcaption align="middle">Caption goes here.</figcaption>
+      </td>
+    </tr>
+    <br>
+    <tr>
+      <td>
+        <img src="images/image3.png" align="middle" width="400px"/>
+        <figcaption align="middle">Caption goes here.</figcaption>
+      </td>
+      <td>
+        <img src="images/image4.png" align="middle" width="400px"/>
+        <figcaption align="middle">Caption goes here.</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+
+
+<h3 align="middle">Part 2: Antialiasing triangles</h3>
+
+<p>My supersampling algorithm is fairly simple:
+<ul>
+<li>For every pixel, I added two extra loops into the rasterize_triangle function: one controlling the x_offset and one controlling the y_offset. The offsets are such that if we call sqrt(sample_rate) r, the offsets go from 1/2r to (2r-1)/(2r), incrementing by 1/r each time.</li>
+<li>With every loop, one of these offsets is updated, and if the resulting point is inside the triangle, the sample buffer records the color. </li>
+<li>When resolving to framebuffer, all of the supersamples for a specific pixel are retrieved from the sample buffer and averaged to create the color of the pixel.</li>
+<li>The sample buffer was modified to be sample_rate times larger than before. This is to accommodate the extra information from the supersamples, and the information about a specific pixel is accessible from position (y * width + x) * sample_rate to position (y * width + x + 1) * sample_rate.</li>
+</ul>
+</p>
+
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="images/task_2_supersample_1.png" align="middle" width="400px"/>
+        <figcaption align="middle">Not supersampling, 1 sample per pixel</figcaption>
+      </td>
+      <td>
+        <img src="images/task_2_supersample_2.png" align="middle" width="400px"/>
+        <figcaption align="middle">Supersampling with 4 samples per pixel</figcaption>
+      </td>
+    </tr>
+    <br>
+    <tr>
+      <td>
+        <img src="images/task_2_supersample_3.png" align="middle" width="400px"/>
+        <figcaption align="middle">Supersampling with 16 samples per pixel</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p>
+The results in basic/test4.svg, above, are observed because the supersampling allows for the skinny triangle to be gradually blended together, as opposed to each pixel being a binary off or on. This allows for greater resolution, as there are more options for the color of each pixel. 
+</p>
+
+<h3 align="middle">Part 3: Transforms</h3>
+
+<p>In this image, my robot is saluting, and his other arm is to the side. </p>
+
+<div align="middle">
+  <img src="images/task_3_robot_salute.png" align="middle" width="800px"/>
+</div>
+<div align="middle">
+
+<h2 align="middle">Section II: Sampling</h2>
+
+<h3 align="middle">Part 4: Barycentric coordinates</h3>
+
+<p>Barycentric coordinates are a way of plotting a coordinate system in a triangle. 
+  It uses three coordinates, each of which represents how close a given point is to one of the vertices of the triangle. 
+  One of the easiest ways to think about it is that if you were to draw a line from the point to each vertex of the triangle, you would create three areas within the triangle. 
+  The portion of the total area of the triangle that each of these areas cover are the three barycentric coordinates, which always add to 1. 
+  <br></br>
+  The below triangle illustrates this. Each vertex is a different color (either red, green, or blue), and the gradient represents the gradual shift in barycentric coordinates.
+</p>
+
+<div align="middle">
+  <img src="images/task_4_example_triangle.png" align="middle" width="800px"/>
+</div>
+
+<p>This next image is from test7.svg.</p>
+
+<div align="middle">
+  <img src="images/task_4_barycentric.png" align="middle" width="800px"/>
+</div>
+
+<h3 align="middle">Part 5: "Pixel sampling" for texture mapping</h3>
+
+<p>I did pixel sampling in two ways: nearest-neighbor and bilinear. 
+
+  <br></br>
+  <b>Nearest-Neighbor Sampling</b>
+  <br></br>
+  For nearest-neighbor sampling, the first thing that I did was compute the barycentric coordinates of the pixel in question. If the pixel was inside the triangle, then 
+  I computed the u and v coordinates of the texture using the formula (alpha * u0 or v0) + (beta * u1 or v1) + (gamma * u2 or v2). I then passed this through to 
+  the texture.cpp file, which found the closest texel to the u and v coordinates given, and returned that color.
+  <br></br>
+  <b>Bilinear Sampling</b>
+  <br></br>
+  For bilinear sampling, I used the same process as nearest-neighbor sampling to generate the u and v coordinates. After this, I computed the four closest texels to this u and v coordinate
+   in texture.cpp. After doing this, I interpolated the texels' color values using the linear interpolation method described in lecture (taking a weighted average based on the distance
+    to each point), and returned this color as the color value of the pixel.
+</p>
+
+<p>
+  The following images are an example of bilinear sampling being clearer than nearest-neighbor sampling, as the text is (slightly) more legible.
+</p>
+
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="images/task_5_nearest_1_sample.png" align="middle" width="400px"/>
+        <figcaption align="middle">Nearest-Neighbor sampling, 1 sample per pixel</figcaption>
+      </td>
+      <td>
+        <img src="images/task_5_bilinear_1_sample.png" align="middle" width="400px"/>
+        <figcaption align="middle">Bilinear sampling, 1 sample per pixel</figcaption>
+      </td>
+    </tr>
+    <br>
+    <tr>
+      <td>
+        <img src="images/task_5_nearest_16_sample.png" align="middle" width="400px"/>
+        <figcaption align="middle">Nearest-Neighbor sampling, 16 samples per pixel</figcaption>
+      </td>
+      <td>
+        <img src="images/task_5_bilinear_16_sample.png" align="middle" width="400px"/>
+        <figcaption align="middle">Bilinear sampling, 16 samples per pixel</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<h3 align="middle">Part 6: "Level sampling" with mipmaps for texture mapping</h3>
+
+<p>I implemented level sampling in the following way:
+<ul>
+<li>For every pixel, I computed the barycentric coordinates for not only the pixel (x, y), but also (x+1, y) and (x, y+1).</li>
+<li>If each of these pixels was inside the triangle, I computed its (u, v) coordinates using the formula from Part 5, and passed that through to texture.cpp.</li>
+<li>texture.cpp then received three sets of (u, v) coordinates, as well as the selectors for which type of sampling to do.</li>
+<li>After this, I found the "level" of the given sets of coordinates by using the formula log2(max(sqrt(diff_u_x^2 + diff_u_y^2), sqrt(diff_v_x^2 + diff_v_y^2))). This gives the approximate 
+  level of mipmap to use (as if the difference between consecutive u and v coordinates is high, then it would make sense to use a lower resolution mipmap.)
+</li>
+<li>
+  Then, I computed the texel at the given mipmap level, using either nearest-neighbor or bilinear sampling, and after applying a lot of checks to ensure that the coordinates were valid, I returned the color.
+</li>
+</ul>
+</p>
+
+<p>
+  One major tradeoff between the types of sampling are that the speed is lowest with level-zero sampling, but the quality is also highest. This is similar to the tradeoff between supersampling
+   with a high number of samples per pixel and a low number - when you have a high number of samples per pixel, you have to use more memory and it is slower, but you get better antialiasing.
+  <br></br>
+  With pixel sampling, the major tradeoff is again similar - if you use bilinear sampling, you have to use more memory and sacrifice speed, but you end up with usually a better-looking image.
+  In contrast, if you use nearest-neighbor sampling, you have worse anti-aliasing but better speed and less memory used.
+</p>
+
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="images/task_6_level_0_nearest_pixel.png" align="middle" width="400px"/>
+        <figcaption align="middle">Level 0, Nearest-Neighbor sampling</figcaption>
+      </td>
+      <td>
+        <img src="images/task_6_level_0_bilinear.png" align="middle" width="400px"/>
+        <figcaption align="middle">Level 0, Bilinear sampling</figcaption>
+      </td>
+    </tr>
+    <br>
+    <tr>
+      <td>
+        <img src="images/task_6_nearest_level_nearest_pixel.png" align="middle" width="400px"/>
+        <figcaption align="middle">Nearest level, nearest-neighbor sampling</figcaption>
+      </td>
+      <td>
+        <img src="images/task_6_nearest_level_bilinear.png" align="middle" width="400px"/>
+        <figcaption align="middle">Nearest level, bilinear sampling</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p> It is interesting to note here that the bilinear sampling gives a worse result than nearest-neighbor (in my opinion). I think this could be because this image was generated 
+  essentially pixel by pixel (it was my Scheme contest entry back in 61A). Bilinear sampling might be better for images without as hard of edges. 
+</p>
+</body>
 </html>
